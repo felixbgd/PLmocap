@@ -13,9 +13,9 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 import os
 
-def size_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd(),viz=None) :
+def size_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd(),colors=None,viz=True,dim=3) :
     
-    ## The input (xyz) data 'data' must be in the format Npersons x Nsensors x Nframes
+    ## The input (xyz) data 'data' must be in the format Npersons x (Nsensorsxdim) x Nframes
     ## 'ref_posture' (Npersons x Nsensors) is the average of postures across frames, if None
     ## 'persons' is the list of the labels given to the different persons in the mocap dataset
     ## Figures are saved on 'output_dir', if 'viz'!=None
@@ -23,6 +23,7 @@ def size_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd(),
     if ref_posture is None :
         ref_posture=np.mean(data,2)
     global_ref_posture = np.mean(ref_posture,0)
+    Nsensors = np.int( data.shape[1] / dim )
     
     # Regression bt each average posture and global average posture
     reg_slope = []
@@ -37,7 +38,7 @@ def size_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd(),
     offset= np.reshape(np.asarray(reg_offset),(len(persons),1))
     
     # Plots (optimized for 4 persons)
-    if viz != None : 
+    if viz != False : 
         # Scatterplots of the sensors of each person in the reference posture, 
         # as a function of the global reference posture (fig)
         # fig2 allows for specifying the 3D axis of each sensor (x,y,z) 
@@ -75,6 +76,10 @@ def size_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd(),
     global_ref_posture_SI = np.mean(ref_posture_SI,0)
     
     # Compute and plot reference posture after normalization
+    if colors is None : 
+        colors = []
+        for i in range(0,len(persons)) :
+            colors.append(np.random.rand(3,))
     # regression bt each average posture and global average posture
     reg_slope_SI = []
     reg_offset_SI = []
@@ -88,7 +93,7 @@ def size_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd(),
     offset_SI= np.reshape(np.asarray(reg_offset_SI),(len(persons),1))
     
     # Plots
-    if viz != None : 
+    if viz != False : 
         # Scatterplots of the sensors of each person in the new reference posture, 
         # as a function of the global reference posture
         fig = plt.figure(figsize=(8,8))
@@ -108,23 +113,23 @@ def size_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd(),
         # Comparison of the sensors positions in the reference posture, between 
         # size_norm and after, for each person
         for i in range(0,len(persons)):
-            compare_frame(np.reshape(ref_posture[i,:],(1,sz[0],sz[1])), \
-                          np.reshape(ref_posture_SI[i,:],(1,sz[0],sz[1])), \
+            compare_frame(np.reshape(ref_posture[i,:],(1,Nsensors,dim)), \
+                          np.reshape(ref_posture_SI[i,:],(1,Nsensors,dim)), \
                        "ORI","SI", save=output_dir + '/COMPAR_SI_person' + str(i+1) + '.pdf')
             plt.close()
         # Comparison of the Npers refererence postures after size_norm
-        compare_allrefs(np.reshape(ref_posture_SI,(len(persons),sz[0],sz[1])), persons, colors, save=output_dir + '/COMPAR_allrefs_SI.pdf')
+        compare_allrefs(np.reshape(ref_posture_SI,(len(persons),Nsensors,dim)), persons, colors, save=output_dir + '/COMPAR_allrefs_SI.pdf')
         plt.close()
         # Comparison of the Npers refererence postures after size_norm + the new global reference posture
-        compare_allrefs(np.reshape(ref_posture_SI,(len(persons),sz[0],sz[1])), persons, colors, save=output_dir + '/COMPAR_allrefs_SI_mean.pdf',  \
-                        mean=np.reshape(global_ref_posture_SI,(1,sz[0],sz[1])))
+        compare_allrefs(np.reshape(ref_posture_SI,(len(persons),Nsensors,dim)), persons, colors, save=output_dir + '/COMPAR_allrefs_SI_mean.pdf',  \
+                        mean=np.reshape(global_ref_posture_SI,(1,Nsensors,dim)))
         plt.close()
         
     return data_SI, ref_posture_SI
 
-def shape_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd(),viz=None) :
+def shape_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd(),colors=None,viz=True,dim=3) :
     
-    ## The input (xyz) data 'data' must be in the format Npersons x Nsensors x Nframes
+    ## The input (xyz) data 'data' must be in the format Npersons x (Nsensorsxdim) x Nframes
     ## 'ref_posture' (Npersons x Nsensors) is the average of postures across frames, if None
     ## 'persons' is the list of the labels given to the different persons in the mocap dataset
     ## Figures are saved on 'output_dir', if 'viz'!=None
@@ -133,6 +138,7 @@ def shape_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd()
     if ref_posture is None :
         ref_posture=np.mean(data,2)
     global_ref_posture = np.mean(ref_posture,0)
+    Nsensors = np.int( data.shape[1] / dim )
     
     data_SH = np.zeros(data.shape)
     ref_posture_SH = np.zeros(ref_posture.shape)
@@ -141,20 +147,24 @@ def shape_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd()
                                     + np.reshape(global_ref_posture,(-1,1))
         ref_posture_SH[i,:] = ref_posture[i,:] - ref_posture[i,:] + global_ref_posture
         
-    if viz != None :  
+    if viz != False :  
+        if colors is None : 
+            colors = []
+            for i in range(0,len(persons)) :
+                colors.append(np.random.rand(3,))
         # Comparison of the sensors positions in the reference posture, between 
         # shape_norm and after, for each person                          
         for i in range(0,len(persons)):
-            compare_frame(np.reshape(ref_posture[i,:],(1,sz[0],sz[1])), \
-                          np.reshape(ref_posture_SH[i,:],(1,sz[0],sz[1])), \
+            compare_frame(np.reshape(ref_posture[i,:],(1,Nsensors,dim)), \
+                          np.reshape(ref_posture_SH[i,:],(1,Nsensors,dim)), \
                        "SI","SH", save=output_dir + '/COMPAR_SH_person' + str(i+1) + '.pdf')
             plt.close()
         # Comparison of the Npers refererence postures after shape_norm
-        compare_allrefs(np.reshape(ref_posture_SH,(len(persons),sz[0],sz[1])), persons, colors, save=output_dir + '/COMPAR_allrefs_SH.pdf')
+        compare_allrefs(np.reshape(ref_posture_SH,(len(persons),Nsensors,dim)), persons, colors, save=output_dir + '/COMPAR_allrefs_SH.pdf')
         plt.close()
         # Comparison of the Npers refererence postures after shape_norm + the new global reference posture
-        compare_allrefs(np.reshape(ref_posture_SH,(len(persons),sz[0],sz[1])), persons, colors, save=output_dir + '/COMPAR_allrefs_SH_mean.pdf',  \
-                        mean=np.reshape(global_ref_posture_SI,(1,sz[0],sz[1])))
+        compare_allrefs(np.reshape(ref_posture_SH,(len(persons),Nsensors,dim)), persons, colors, save=output_dir + '/COMPAR_allrefs_SH_mean.pdf',  \
+                        mean=np.reshape(global_ref_posture,(1,Nsensors,dim)))
         plt.close()
         
     return data_SH, ref_posture_SH
