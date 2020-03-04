@@ -19,6 +19,9 @@ def data_viz3D(data, frameStop=None, spec_pt=-1, viz="PL", v=[25,125],liaisons=N
         data=data[:,1:4,:]
     
     joints_to_draw = np.arange(np.shape(data)[0])
+    # Center the image on the pelvis (0)
+    Ncenter = 0     # pelvis marker
+    Ox = data[Ncenter,0,0];   Oy = data[Ncenter,1,0];   Oz = data[Ncenter,2,0]
     
     fig = plt.figure(figsize=(8,8))
     ax = fig.gca(projection='3d') 
@@ -28,10 +31,6 @@ def data_viz3D(data, frameStop=None, spec_pt=-1, viz="PL", v=[25,125],liaisons=N
     numFrame = len(data[0,0,:])     
     if frameStop == None:
         frameStop = numFrame
-    
-    if viz == "PL" :
-        cmarker = 'w'
-        ax.set_facecolor('black');   
         
     for i in range(0,frameStop) :
         ax.clear()
@@ -46,7 +45,7 @@ def data_viz3D(data, frameStop=None, spec_pt=-1, viz="PL", v=[25,125],liaisons=N
                        zs=data[j,2,i],  
                        alpha=0.6, c=cmarker, marker='o')
             ax.set_xlabel('X (m)'); ax.set_ylabel('Y (m)'); ax.set_zlabel('Z (m)');
-            ax.set_xlim(0,2); ax.set_ylim(-0.5,1.5); ax.set_zlim(0,2)
+            ax.set_xlim(Ox-1,Ox+1); ax.set_ylim(Oy-0.75,Oy+1.25); ax.set_zlim(Oz-1,Oz+1)
         if viz == "joints":
             assert(liaisons!=None)
             for l in liaisons :
@@ -64,42 +63,43 @@ def data_viz2D(data, frameStop=None, spec_pt=-1, viz="PL",liaisons=None) :
     # Keep only one plan (2D)
     data=data[:,[0,2],:]
     joints_to_draw = np.arange(np.shape(data)[0])
+    # Center the image on the pelvis (0)
+    Ncenter = 0     # pelvis marker
+    Ox = data[Ncenter,0,0];   Oy = data[Ncenter,1,0];
     
     numFrame = len(data[0,0,:])     
     if frameStop == None:
         frameStop = numFrame
-    
-    cmarker = 'b'
-    if viz == "PL" :
-        cmarker = 'w'
-        ax.set_facecolor('black');   
-        
+           
     for i in range(0,frameStop) :
-        if i % 10 == 0 :    #pour permettre visuo rapide
-            ax.clear()
-        
-            for j in joints_to_draw :
-                    if j == spec_pt :
-                        cmarker = 'r'
-                    ax.scatter(data[j,0,i], data[j,1,i],  c=cmarker, marker='o')
-                    ax.set_xlabel('X (m)'); ax.set_ylabel('Y (m)');
-                    ax.set_xlim(0,2); ax.set_ylim(0,2);
-            if viz == "joints":
-                assert(liaisons!=None)
-                for l in liaisons :
-                    c1 = l[0];   c2 = l[1]  # -1 pour indice python
-                    ax.plot([data[c1,0,i], data[c2,0,i]], [data[c1,1,i], data[c2,1,i]], [data[c1,2,i], data[c2,2,i]], 'k-', lw=1, c='black')
-            ax.set_title('Frame %s' %i)
-            plt.draw()
-            plt.pause(0.1)
+        ax.clear()
+    
+        for j in joints_to_draw :
+            cmarker = 'b' 
+            if j == spec_pt :
+                cmarker = 'r'
+            ax.scatter(data[j,0,i], data[j,1,i],  c=cmarker, marker='o')
+            ax.set_xlabel('X (m)'); ax.set_ylabel('Y (m)');
+            ax.set_xlim(Ox-1,Ox+1); ax.set_ylim(Oy-0.75,Oy+1.25);
+        if viz == "joints":
+            assert(liaisons!=None)
+            for l in liaisons :
+                c1 = l[0];   c2 = l[1]  # -1 pour indice python
+                ax.plot([data[c1,0,i], data[c2,0,i]], [data[c1,1,i], data[c2,1,i]], [data[c1,2,i], data[c2,2,i]], 'k-', lw=1, c='black')
+        ax.set_title('Frame %s' %i)
+        plt.draw()
+        plt.pause(0.1)
             
-def plot_frame(data, frame, spec_pt=-1,viz="3Djoints",liaisons=None,save=None) : 
+def plot_frame(data, frame, spec_pt=-1,viz="3DPL",liaisons=None,save=None) : 
     
     sz = data.shape
     if sz[1] == 4 :     # verify the shape of data (xyz, without time column)
         data=data[:,1:4,:]
         
     joints_to_draw = np.arange(np.shape(data)[0])
+    # Center the image on the pelvis (0)
+    Ncenter = 0     # pelvis marker
+    Ox = data[Ncenter,0,0];   Oy = data[Ncenter,1,0];   Oz = data[Ncenter,2,0]
     
     if viz[:2]=='3D' : 
         fig = plt.figure(figsize=(8,8))
@@ -116,8 +116,8 @@ def plot_frame(data, frame, spec_pt=-1,viz="3Djoints",liaisons=None,save=None) :
                        zs=data[j,2,frame],  
                        alpha=0.6, c=cmarker, marker='o')
             ax.set_xlabel('X (m)'); ax.set_ylabel('Y (m)'); ax.set_zlabel('Z (m)');
-            ax.set_xlim(0,2); ax.set_ylim(-0.5,1.5); ax.set_zlim(0,2)
-        if viz == "3Dliaisons":
+            ax.set_xlim(Ox-1,Ox+1); ax.set_ylim(Oy-0.75,Oy+1.25); ax.set_zlim(Oz-1,Oz+1)
+        if viz == "3Djoints":
             assert(liaisons!=None)
             for l in liaisons :
                 c1 = l[0];   c2 = l[1]  # -1 pour indice python
@@ -133,9 +133,6 @@ def plot_frame(data, frame, spec_pt=-1,viz="3Djoints",liaisons=None,save=None) :
         
         # Keep only one plan (2D)
         data=data[:,[0,2],:]
-        
-        # Center the image on the pelvis (2)
-        Ox = data[2,0,0];   Oy = data[2,1,0]
         
         numFrame = len(data[0,0,:])
         if viz=="PLw" :
@@ -163,9 +160,10 @@ def compare_frame(data1, data2, label1="data1", label2="data2", save=None) :
     data1=data1[:,:,[0,2]]
     data2=data2[:,:,[0,2]]
     
-    # Center the image on the pelvis (0)
-    Ox1 = data1[0,0,0];   Oy1 = data1[0,0,1]
-    Ox2 = data2[0,0,0];   Oy2 = data2[0,0,1]
+    # Center the image on the pelvis (0)# Center the image on the pelvis (0)
+    Ncenter = 0     # pelvis marker
+    Ox1 = data1[0,Ncenter,0];   Oy1 = data1[0,Ncenter,1]
+    Ox2 = data2[0,Ncenter,0];   Oy2 = data2[0,Ncenter,1]
     
     joints_to_draw = np.arange(np.shape(data1)[1])
     # data1
@@ -204,7 +202,8 @@ def compare_allrefs(data_ref, labels, colors, save=None, mean=None, spec_pt=-1) 
     data_ref=data_ref[:,:,[0,2]]
     
     # Center the image on the pelvis (0)
-    Ox = data_ref[:,0,0];   Oy = data_ref[:,0,1]
+    Ncenter=0
+    Ox = data_ref[:,Ncenter,0];   Oy = data_ref[:,Ncenter,1]
     
     joints_to_draw = np.arange(np.shape(data_ref)[1])
     sizeMarker=50
