@@ -17,6 +17,6 @@ Viz :
 - plot_3frames : 3-frame visualization of mocap data in 2D, to describe motion
 
 Classif : 
-- class_logReg : Multinomial regression with leave-one-observation-out validation 
+- class_logReg : Multinomial logistic regression with leave-one-observation-out validation 
 
 Stats.py coming soon, with a set of functions to compute differential features of motion (velocities, accelerations...) and apply stats on it...
