@@ -1,6 +1,6 @@
 # PLmocap
 
-A library for machine learning, feature analysis, and visualization based on motion capture data. 
+A Python library for machine learning, feature analysis, and visualization based on motion capture data. 
 
 Preprocessing : 
 - size_norm : Size normalization of the skeletons in a mocap dataset with multiple persons.
