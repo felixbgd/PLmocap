@@ -164,10 +164,10 @@ def shape_norm(data,ref_posture=None,persons=np.arange(4),output_dir=os.getcwd()
             plt.close()
             
         # Comparison of the Npers refererence postures after shape_norm
-        compare_Nframes(np.reshape(ref_posture_SH,(len(persons),Nsensors,dim)), persons, colors, markers, save_dir=output_dir + '/COMPAR_allrefs_SH.pdf')
+        compare_Nframes(np.reshape(ref_posture_SH,(len(persons),Nsensors,dim)), persons, markers, colors, save_dir=output_dir + '/COMPAR_allrefs_SH.pdf')
         plt.close()
         # Same plot + the new global reference posture
-        compare_Nframes(np.reshape(ref_posture_SH,(len(persons),Nsensors,dim)), persons, colors, markers, save_dir=output_dir + '/COMPAR_allrefs_SH_mean.pdf',  \
+        compare_Nframes(np.reshape(ref_posture_SH,(len(persons),Nsensors,dim)), persons, markers, colors, save_dir=output_dir + '/COMPAR_allrefs_SH_mean.pdf',  \
                         mean=np.reshape(global_ref_posture,(1,Nsensors,dim)))
         plt.close()
         

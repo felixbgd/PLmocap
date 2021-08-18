@@ -30,10 +30,10 @@ def data_viz3D(data, frameStop=None, spec_pt=-1, viz="PL", view=[25,125],liaison
     # Center the image
     Ncenter = center_sens     # e.g. pelvis marker
     Ox = data[Ncenter,0,0];   Oy = data[Ncenter,1,0];   Oz = data[Ncenter,2,0]
-    maxX = (data[:,0,:]-Ox).max(); maxY = (data[:,1,:]-Oy).max(); maxZ = (data[:,2,:]-Oz).max()
+    maxX = np.abs(data[:,0]-Ox).max(); maxY = np.abs(data[:,1]-Oy).max(); maxZ = np.abs(data[:,2]-Oz).max()
     
     # Adjust your scale along the 3 axis 
-    Kx = 3; Ky = 5; Kz = 1.25;
+    Kx = 1.25; Ky = 5; Kz = 1.25;
     
     fig = plt.figure(figsize=(8,8))
     ax = fig.gca(projection='3d') 
@@ -89,10 +89,10 @@ def data_viz2D(data, frameStop=None, spec_pt=-1, viz="PL",liaisons=None, center_
     # Center the image
     Ncenter = center_sens    # e.g. pelvis marker
     Ox = data[Ncenter,0,0];   Oz = data[Ncenter,1,0];
-    maxX = (data[:,0,:]-Ox).max(); maxZ = (data[:,1,:]-Oz).max();
+    maxX = np.abs(data[:,0,:]-Ox).max(); maxZ = np.abs(data[:,1,:]-Oz).max();
     
     # Adjust your scale along the 3 axis 
-    Kx = 3; Kz = 1.25;
+    Kx = 1.25; Kz = 1.25;
 
     numFrame = len(data[0,0,:])     
     if frameStop == None:
@@ -112,7 +112,7 @@ def data_viz2D(data, frameStop=None, spec_pt=-1, viz="PL",liaisons=None, center_
             assert(liaisons!=None)
             for l in liaisons :
                 c1 = l[0];   c2 = l[1]  
-                ax.plot([data[c1,0,i], data[c2,0,i]], [data[c1,1,i], data[c2,1,i]], [data[c1,2,i], data[c2,2,i]], 'k-', lw=1, c='black')
+                ax.plot([data[c1,0,i], data[c2,0,i]], [data[c1,1,i], data[c2,1,i]], 'k-', lw=1, c='black')
         ax.set_title('Frame %s' %i)
         plt.draw()
         plt.pause(0.1)
@@ -132,10 +132,10 @@ def plot_frame(data, spec_pt=-1,viz="3DPL",liaisons=None,save_dir=None, center_s
     # Center the image on the pelvis (0)
     Ncenter = center_sens     # e.g. pelvis marker
     Ox = data[Ncenter,0];   Oy = data[Ncenter,1];   Oz = data[Ncenter,2]
-    maxX = (data[:,0]-Ox).max(); maxY = (data[:,1]-Oy).max(); maxZ = (data[:,2]-Oz).max()
+    maxX = np.abs(data[:,0]-Ox).max(); maxY = np.abs(data[:,1]-Oy).max(); maxZ = np.abs(data[:,2]-Oz).max()
     
     # Adjust your scale along the 3 axis 
-    Kx = 3; Ky = 5; Kz = 1.25;
+    Kx = 3; Ky = 5; Kz = 1.25; 
     
     if viz[:2]=='3D' : 
         fig = plt.figure(figsize=(8,8))
@@ -153,12 +153,13 @@ def plot_frame(data, spec_pt=-1,viz="3DPL",liaisons=None,save_dir=None, center_s
                        alpha=0.6, c=cmarker, marker='o')
             ax.set_xlabel('X (m)'); ax.set_ylabel('Y (m)'); ax.set_zlabel('Z (m)');
             ax.set_xlim(Ox-Kx*maxX,Ox+Kx*maxX); ax.set_ylim(Oy-Ky*maxY,Oy+Ky*maxY); ax.set_zlim(Oz-Kz*maxZ,Oz+Kz*maxZ)
+            ax.invert_xaxis()
         if viz == "3Djoints":
             assert(liaisons!=None)
             for l in liaisons :
                 c1 = l[0];   c2 = l[1]  # -1 pour indice python
                 ax.plot([data[c1,0], data[c2,0]], [data[c1,1], data[c2,1]], [data[c1,2], data[c2,2]], 'k-', lw=1, c='black')
-
+                ax.set_axis_off()
         
     elif viz[:2] == "PL" :
         fig = plt.figure(figsize=(8,8))
@@ -207,7 +208,7 @@ def compare_2frames(data1, data2, label1="data1", label2="data2", save_dir=None,
     Ncenter = center_sens     # e.g. pelvis marker
     Ox1 = data1[Ncenter,0];   Oz1 = data1[Ncenter,1]
     Ox2 = data2[Ncenter,0];   Oz2 = data2[Ncenter,1]
-    maxX = (data1[:,0]-Ox1).max(); maxZ = (data1[:,1]-Oz1).max()
+    maxX = np.abs(data1[:,0]-Ox1).max(); maxZ = np.abs(data1[:,1]-Oz1).max()
     
     # Adjust your scale along the 3 axis 
     Kx = 3; Kz = 1.25;
@@ -239,7 +240,7 @@ def compare_2frames(data1, data2, label1="data1", label2="data2", save_dir=None,
         fig.savefig(save_dir, bbox_inches='tight')
         
         
-def compare_Nframes(data, labels, colors, markers, save_dir=None, mean=None, spec_pt=-1, center_sens=0) :
+def compare_Nframes(data, labels, markers, colors=None, save_dir=None, mean=None, liaisons=None, spec_pt=-1, center_sens=0) :
     ##########################################################################
     ##### Comparison of N postures of mocap data in the 2D frontal plane
     ##### 'data' array is (Npos, Nsensors, Ndim) - Ndim should be 2 or 3
@@ -258,25 +259,36 @@ def compare_Nframes(data, labels, colors, markers, save_dir=None, mean=None, spe
     # Center the image
     Ncenter = center_sens   # e.g. pelvis marker
     Ox = data[:,Ncenter,0];   Oz = data[:,Ncenter,1]
-    maxX = (data[0,:,0]-Ox[0]).max(); maxZ = (data[0,:,1]-Oz[0]).max();
+    maxX = np.abs(data[0,:,0]-Ox[0]).max(); maxZ = np.abs(data[0,:,1]-Oz[0]).max();
     
     # Adjust your scale along the 3 axis 
-    Kx = 3; Kz = 1.25;
+    Kx = 1.25; Kz = 1.25;
     
     joints_to_draw = np.arange(np.shape(data)[1])
-    sizeMarker=50
+    sizeMarker=60
     
     for n in range(0,len(labels)) :
         for j in joints_to_draw :
-            cmarker = colors[n]
+            if colors==None:
+                if n==0 :cmarker = 'black'
+                else: cmarker = 'gray'
+            else:
+                cmarker=colors[n]
             if j == spec_pt :
                 cmarker = 'black'
             if j == joints_to_draw[0]:
-                ax.scatter(data[n,j,0], data[n,j,1],  c=cmarker, marker=markers[n], alpha = 0.7, label=labels[n], s=sizeMarker)
+                ax.scatter(data[n,j,0], data[n,j,1],  c=cmarker, marker=markers[n], alpha = 0.8, label=labels[n], s=sizeMarker)
             ax.scatter(data[n,j,0], data[n,j,1],  c=cmarker, marker=markers[n], alpha = 0.7, s=sizeMarker)
-            ax.set_xlim(Ox[n]-Kx*maxX,Ox[n]+Kx*maxX); ax.set_ylim(Oz[n]-Kz*maxZ,Oz[n]+Kz*maxZ); ax.invert_xaxis()
+            ax.set_xlim(Ox[n]-Kx*1.1*maxX,Ox[n]+Kx*0.9*maxX); ax.set_ylim(Oz[n]-Kz*0.1*maxZ,Oz[n]+Kz*maxZ); 
+            ax.set_xlim(-1,1); ax.set_ylim(-0.75,1.25); ax.invert_xaxis()
             ax.set_xlabel('X (m)',fontsize=20); ax.set_ylabel('Z (m)',fontsize=20); ax.tick_params(labelsize=15)
             plt.tight_layout(); plt.draw()
+    
+        if liaisons!=None:
+            for l in liaisons :
+                c1 = l[0];   c2 = l[1]  # get the two joints
+                ax.plot([data[n,c1,0], data[n,c2,0]], [data[n,c1,1], data[n,c2,1]], 'k-', lw=1.25, c=cmarker,alpha=0.8)
+#    ax.set_axis_off()
             
     if mean is not None :
         if mean.shape[2] == 3 : mean=mean[:,:,[0,2]]
@@ -286,21 +298,21 @@ def compare_Nframes(data, labels, colors, markers, save_dir=None, mean=None, spe
             if j == joints_to_draw[0]:
                 ax.scatter(mean[0,j,0], mean[0,j,1],  facecolors='none', edgecolors=cmarker, marker='*', label='mean', s=sizeMarker)
             ax.scatter(mean[0,j,0], mean[0,j,1],  facecolors='none', edgecolors=cmarker, marker='*', s=sizeMarker)
-            ax.set_xlim(OxM-Kx*maxX,OxM+Kx*maxX); ax.set_ylim(OzM-Kz*maxZ,OzM+Kz*maxZ); ax.invert_xaxis()
+            ax.set_xlim(OxM-Kx*maxX,OxM+Kx*maxX); ax.set_ylim(OzM-Kz*0.1*maxZ,OzM+Kz*maxZ); ax.invert_xaxis()
             plt.tight_layout(); plt.draw()
     ax.legend(fontsize=12);
             
     if save_dir is not None :
-        fig.savefig(save_dir, bbox_inches='tight')
+        fig.savefig(save_dir, dpi=300, bbox_inches='tight')
         
         
-def video_PL(data, save_dir, spec_pt=-1, viz="PL", fps=25, center_sens=0):
+def video_PL(data, save_dir, plan="XZ", spec_pt=-1, viz="PL", fps=25, center_sens=0, maxX=None, maxY=None, maxZ=None):
     ##########################################################################
     ##### Exports a mocap video as point lights in the 2D frontal plane
     ##### It uses ffmpeg so it requires its installation
     ##### 'data' array is (Nsensors, Ndim, Nframes) - Ndim should be 2 or 3
     ##### Display is black point lights, in the specified 'plan'
-    ##### Beware of adjusting the Kx & Kz scale factors in the code
+    ##### Beware of adjusting the Kx, Ky & Kz scale factors in the code
     ##########################################################################
     
     fig = plt.figure(figsize=(8,8))
@@ -312,18 +324,21 @@ def video_PL(data, save_dir, spec_pt=-1, viz="PL", fps=25, center_sens=0):
     
     plt.ion()
     
-    
-    
-    # Keep only one plan (2D)
-    if data.shape[1] == 3 : data=data[:,[0,2],:]
-    
     # Center the image
     Ncenter = center_sens    # e.g. pelvis marker
-    Ox = data[Ncenter,0,0];   Oz = data[Ncenter,1,0];
-    maxX = (data[:,0,:]-Ox).max(); maxZ = (data[:,1,:]-Oz).max();
+    Ox = data[Ncenter,0,0];   Oy = data[Ncenter,1,0];   Oz = data[Ncenter,2,0]
+    if maxX == None : maxX = (data[:,0,:]-Ox).max(); 
+    if maxY == None : maxY = (data[:,1,:]-Oy).max();
+    if maxZ == None : maxZ = (data[:,2,:]-Oz).max()
+    
+    # Keep only one plan (2D)
+    if plan=="XZ" : data=data[:,[0,2],:]
+    if plan=="XY" : data=data[:,[0,1],:]
+    if plan=="YZ" : data=data[:,[1,2],:]
+    
     
     # Adjust your scale along the 3 axis 
-    Kx = 3; Kz = 1.25;
+    Kx = 1; Ky = 1; Kz = 1;
     
     joints_to_draw = np.arange(np.shape(data)[0])
     numFrame = len(data[0,0,:])     
@@ -342,8 +357,15 @@ def video_PL(data, save_dir, spec_pt=-1, viz="PL", fps=25, center_sens=0):
         for j in joints_to_draw :
                 if j == spec_pt :
                     cmarker = 'r'
-                ax.scatter(data[j,0,i], data[j,1,i],  c=cmarker, marker='o')
-                ax.set_xlim(Ox-Kx*maxX,Ox+Kx*maxX); ax.set_ylim(Oz-Kz*maxZ,Oz+Kz*maxZ); ax.invert_xaxis()
+                if plan == "XZ" :
+                    ax.scatter(data[j,0,i], data[j,1,i],  c=cmarker, marker='o')
+                    ax.set_xlim(Ox-Kx*maxX,Ox+Kx*maxX); ax.set_ylim(Oz-Kz*maxZ,Oz+Kz*maxZ); ax.invert_xaxis()
+                if plan == "XY" :
+                    ax.scatter(data[j,0,i], data[j,1,i],  c=cmarker, marker='o')
+                    ax.set_xlim(Ox-Kx*maxX,Ox+Kx*maxX); ax.set_ylim(Oy-Ky*maxY,Oy+Ky*maxY);
+                if plan == "YZ" :
+                    ax.scatter(data[j,0,i], data[j,1,i],  c=cmarker, marker='o')
+                    ax.set_xlim(Oy-Ky*maxY,Oy+Ky*maxY); ax.set_ylim(Oz-Kz*maxZ,Oz+Kz*maxZ);       
         plt.tight_layout(); plt.draw()
         return ax
     numFrame=len(data[0,0,:])
@@ -359,7 +381,7 @@ def video_PL(data, save_dir, spec_pt=-1, viz="PL", fps=25, center_sens=0):
     plt.close()
     
     
-def plot_3frames(data, frames, plan="XZ", save_dir=None, center_sens=0) :
+def plot_3frames(data, frames, plan="XZ", liaisons=None, save_dir=None, center_sens=0, cmarker='black',fig=None,label=None) :
     ##########################################################################
     ##### 3-frame visualization of mocap data in 2D, to describe motion
     ##### 'data' array is (Nsensors, Ndim, Nframes) - Ndim should be 3
@@ -375,33 +397,100 @@ def plot_3frames(data, frames, plan="XZ", save_dir=None, center_sens=0) :
     maxX = (data[:,0,:]-Ox).max(); maxY = (data[:,1,:]-Oy).max(); maxZ = (data[:,2,:]-Oz).max()
     
     # Adjust your scale along the 3 axis 
-    Kx = 1.5; Ky = 2; Kz = 0.6;
+    Kx = 1.5; Ky = 5; Kz = 0.6;
     
     # Keep only one plan (2D)
     if plan=="XZ" : data=data[:,[0,2],:]
     if plan=="XY" : data=data[:,[0,1],:]
     if plan=="YZ" : data=data[:,[1,2],:]
-    cmarker = 'black'
     
-    fig = plt.figure(figsize=(16,8))
+    if fig==None:
+        fig = plt.figure(figsize=(16,8))
     for f in range(len(frames)) :
+        print(frames[f])
         ax = fig.add_subplot(1, 3, f+1) 
+        ax.set_aspect('equal')
+        ax.get_xaxis().set_visible(False)  
+        ax.get_yaxis().set_visible(False)
+        
+        if liaisons!=None:
+            for l in liaisons :
+                c1 = l[0];   c2 = l[1]  # get the two joints
+                ax.plot([data[c1,0,frames[f]], data[c2,0,frames[f]]], [data[c1,1,frames[f]], data[c2,1,frames[f]]], 'k-', lw=1.5, c='black',zorder=1)
+
+        for j in joints_to_draw :
+            if plan == "XZ" :
+                if j==0 : ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]], marker='o',edgecolor='black',facecolor=cmarker, s=55, alpha=0.8,zorder=2,label=label)  #label on scatter
+                ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]], marker='o',edgecolor='black',facecolor=cmarker,alpha=0.8,zorder=2)
+                ax.set_xlim(Ox-Kx*maxX,Ox+Kx*maxX); ax.set_ylim(Oz-Kz*maxZ,Oz+2.1*Kz*maxZ); ax.invert_xaxis()
+            if plan == "XY" :
+                if j==0:ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]], marker='o',edgecolor='black',facecolor=cmarker, s=55,alpha=0.8,zorder=2,label=label)
+                ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]], marker='o',edgecolor='black',facecolor=cmarker,alpha=0.8,zorder=2)
+                ax.set_xlim(Ox-Kx*maxX,Ox+Kx*maxX); ax.set_ylim(Oy-Ky*maxY,Oy+Ky*maxY);
+            if plan == "YZ" :
+                if j==0:ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]], marker='o',edgecolor='black',facecolor=cmarker, s=55,alpha=0.8,zorder=2,label=label)
+                ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]], marker='o',edgecolor='black',facecolor=cmarker,alpha=0.8,zorder=2)
+                ax.set_ylim(Oy-Ky*maxY,Oy+Ky*maxY); ax.set_ylim(Oz-Kz*maxZ,Oz+2.1*Kz*maxZ); ax.invert_xaxis()
+            plt.tight_layout(); plt.draw()
+            
+        ax.set_axis_off()
+    
+    if label!=None:
+        ax.legend(fontsize=13,markerscale=1.2)
+            
+    if save_dir != None :
+        fig.savefig(save_dir, bbox_inches='tight')
+        
+        
+def plot_2frames(data, frames, plan="XZ", liaisons=None, save_dir=None, center_sens=0) :
+    ##########################################################################
+    ##### Visualization of mocap data in 2D, min and max postures in 1 figure
+    ##### 'data' array is (Nsensors, Ndim, Nframes) - Ndim should be 3
+    ##### Display is black point lights, in the specified 'plan'
+    ##### Beware of adjusting the Kx & Kz scale factors in the code
+    ##########################################################################
+    
+    joints_to_draw = np.arange(np.shape(data)[0])
+    
+    # Center the image
+    Ncenter = center_sens     # e.g. pelvis marker
+    Ox = data[Ncenter,0,0];   Oy = data[Ncenter,1,0];   Oz = data[Ncenter,2,0]
+    maxX = (data[:,0,:]-Ox).max(); maxY = (data[:,1,:]-Oy).max(); maxZ = (data[:,2,:]-Oz).max()
+    
+    # Adjust your scale along the 3 axis 
+    Kx = 1.5; Ky = 5; Kz = 0.6;
+    
+    # Keep only one plan (2D)
+    if plan=="XZ" : data=data[:,[0,2],:]
+    if plan=="XY" : data=data[:,[0,1],:]
+    if plan=="YZ" : data=data[:,[1,2],:]
+    
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.gca()
+    for f in range(len(frames)) :
+        if f==0:cmarker = 'gray'
+        if f==1:cmarker = 'black'
         ax.set_aspect('equal')
         ax.get_xaxis().set_visible(False)  
         ax.get_yaxis().set_visible(False)
         
         for j in joints_to_draw :
             if plan == "XZ" :
-                ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]],  c=cmarker, marker='o',alpha=0.6)
+                ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]],  c=cmarker, marker='o', s=55, alpha=0.6)
                 ax.set_xlim(Ox-Kx*maxX,Ox+Kx*maxX); ax.set_ylim(Oz-Kz*maxZ,Oz+2.1*Kz*maxZ); ax.invert_xaxis()
-#                ax.set_xlim(Ox-0.5,Ox+0.5); ax.set_ylim(Oz-0.5,Oz+1); ax.invert_xaxis()
             if plan == "XY" :
-                ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]],  c=cmarker, marker='o',alpha=0.6)
+                ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]],  c=cmarker, marker='o', s=55 ,alpha=0.6)
                 ax.set_xlim(Ox-Kx*maxX,Ox+Kx*maxX); ax.set_ylim(Oy-Ky*maxY,Oy+Ky*maxY);
             if plan == "YZ" :
-                ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]],  c=cmarker, marker='o',alpha=0.6)
-                ax.set_ylim(Oy-Ky*maxY,Oy+Ky*maxY); ax.set_ylim(Oz-Kz*maxZ,Oz+Kz*maxZ); ax.invert_xaxis()
+                ax.scatter(data[j,0,frames[f]], data[j,1,frames[f]],  c=cmarker, marker='o', s=55 ,alpha=0.6)
+                ax.set_ylim(Oy-Ky*maxY,Oy+Ky*maxY); ax.set_ylim(Oz-Kz*maxZ,Oz+2.1*Kz*maxZ); ax.invert_xaxis()
             plt.tight_layout(); plt.draw()
+            
+        if liaisons!=None:
+            for l in liaisons :
+                c1 = l[0];   c2 = l[1]  # get the two joints
+                ax.plot([data[c1,0,frames[f]], data[c2,0,frames[f]]], [data[c1,1,frames[f]], data[c2,1,frames[f]]], 'k-', lw=1.5, c=cmarker)
+        ax.set_axis_off()
             
     if save_dir != None :
         fig.savefig(save_dir, bbox_inches='tight')
