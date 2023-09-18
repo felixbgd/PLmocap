@@ -17,59 +17,110 @@ from mpl_toolkits.mplot3d import Axes3D
 ##### ALL THE FUNCTIONS CAN BE USED WITH MOTION MATRIX OF CARTESIAN COORD (XYZ) #####
 #####################################################################################
 
-def class_logReg(features, labels, label_names, output_dir) :
+def class_logReg(features, labels, NB_OBS, label_names, C=1, output_dir=None, multiclass='multinomial') :
     ##########################################################################
     ##### Multinomial regression with leave-one-observation-out validation 
     ##### 'features' : feature matrix (Nexamples x Nfeatures)
     ##### 'labels' : label of each example (Nexamples) 
+    ##### 'NB_OBS' : number of observations per subject
     ##### 'label_names' : labels names (Nlabel)
     ##### OUTPUTS : confusion and proba matrix + the sklearn regression model
     ##########################################################################
     
-    NB_LABEL = len(np.unique(labels)); NB_IM = int( features.shape[0] / NB_LABEL )
-    conf = np.zeros((NB_IM,NB_LABEL,NB_LABEL));  proba = np.zeros((NB_IM,NB_LABEL,NB_LABEL))
-    train_score = np.zeros((NB_IM));   test_score = np.zeros((NB_IM))
-    for j in range(0,NB_IM) :
+    NB_LABEL = len(np.unique(labels)); NB_SUBJ = int( features.shape[0] / NB_OBS )
+    conf = np.zeros((NB_OBS,NB_LABEL,NB_LABEL));  proba = np.zeros((NB_OBS,NB_SUBJ,NB_LABEL))
+    weights = np.zeros((NB_OBS,NB_LABEL,features.shape[1])); intercept = np.zeros((NB_OBS,NB_LABEL))
+    train_score = np.zeros((NB_OBS));   test_score = np.zeros((NB_OBS))
+    for j in range(0,NB_OBS) :
         testFold = j
         # Determine indexes for LOOO
         indTest=[]; 
-        for lab in range(NB_LABEL) : indTest.append(lab*NB_IM+j)
+        for subj in range(NB_SUBJ) : indTest.append(subj*NB_OBS+j)
         indTrain = [e for i, e in enumerate(range(len(labels))) if  not (i in (indTest))]
         test_x = np.array([e for i, e in enumerate(features) if  i in (indTest)])
         test_y = [e for i, e in enumerate(labels) if  i in (indTest)]
         train_x = np.array([e for i, e in enumerate(features) if  i in (indTrain)])
         train_y = [e for i, e in enumerate(labels) if  i in (indTrain)]
         
-        mul_lr = linear_model.LogisticRegression(multi_class='multinomial', solver='newton-cg').fit(train_x, train_y)
+        if multiclass=='multinomial': mul_lr = linear_model.LogisticRegression(multi_class=multiclass,solver='newton-cg',C=C).fit(train_x, train_y)
+        if multiclass=='ovr': mul_lr = linear_model.LogisticRegression(multi_class=multiclass,C=C).fit(train_x, train_y)
         
-        proba[j,:] = mul_lr.predict_proba(test_x)
-        conf[j,:] = metrics.confusion_matrix(test_y, mul_lr.predict(test_x))
+        weights[j,:,:] = mul_lr.coef_
+        intercept[j,:] = mul_lr.intercept_
+        proba[j,:,:] = mul_lr.predict_proba(test_x)
+        conf[j,:,:] = metrics.confusion_matrix(test_y, mul_lr.predict(test_x))
+        conf[j,:,:] /= np.sum(conf[j,:,:],axis=1)[:,None]
+        test_score[j] = np.average(np.diag(conf[j,:,:]))
         train_score[j] = metrics.accuracy_score(train_y, mul_lr.predict(train_x))
-        test_score[j] = metrics.accuracy_score(test_y, mul_lr.predict(test_x))
-    
+     
+    weights_mean = np.average(weights,0)
+    intercept_mean = np.average(intercept,0)
     proba_mean = np.average(proba,0)
     conf_mean = np.average(conf,0)
     conf_sdv = np.std(conf,0)
     
-    np.save(output_dir + '/conf_MLR_m',conf_mean)
-    np.save(output_dir + '/proba_MLR_m',proba_mean)
+    if output_dir != None:
+        np.save(output_dir + '/conf_MLR_m',conf_mean)
+        np.save(output_dir + '/proba_MLR_m',proba_mean)
+        
+        fig_proba = plt.figure(figsize=(8,8))
+        ax = fig_proba.gca()
+        im = ax.imshow(proba_mean , clim=(0.0, 1.0))
+        fig_proba.colorbar(im, shrink=0.83, orientation='vertical')
+        ax.set_xticks(np.arange(NB_LABEL)); ax.set_xticklabels(label_names); ax.set_yticks(np.arange(NB_LABEL)); ax.set_yticklabels(label_names)
+        fig_proba.savefig(output_dir + '/proba_MLR_m.pdf', bbox_inches='tight')
+        plt.close()
+        
+        fig_conf = plt.figure(figsize=(8,8))
+        ax = fig_conf.gca()
+        im = ax.imshow(conf_mean , clim=(0.0, 1.0))
+        fig_conf.colorbar(im, shrink=0.83, orientation='vertical')
+        ax.set_xticks(np.arange(NB_LABEL)); ax.set_xticklabels(label_names); ax.set_yticks(np.arange(NB_LABEL)); ax.set_yticklabels(label_names)
+        fig_conf.savefig(output_dir + '/conf_MLR_m.pdf', bbox_inches='tight')
     
-    fig_proba = plt.figure(figsize=(8,8))
-    ax = fig_proba.gca()
-    im = ax.imshow(proba_mean , clim=(0.0, 1.0))
-    fig_proba.colorbar(im, shrink=0.83, orientation='vertical')
-    ax.set_xticks(np.arange(NB_LABEL)); ax.set_xticklabels(label_names); ax.set_yticks(np.arange(NB_LABEL)); ax.set_yticklabels(label_names)
-    fig_proba.savefig(output_dir + '/proba_MLR_m.pdf', bbox_inches='tight')
-    plt.close()
+    return weights_mean, intercept_mean, conf_mean, proba_mean, test_score, mul_lr
+
+
+# def crossval_logReg(features, labels, NB_OBS, label_names, c_values=np.hstack((0,10**np.arange(-4.0,5.0))), output_dir=None, multiclass='multinomial') :
+#     ##########################################################################
+#     ##### Multinomial regression with leave-one-observation-out validation 
+#     ##### 'features' : feature matrix (Nexamples x Nfeatures)
+#     ##### 'labels' : label of each example (Nexamples) 
+#     ##### 'NB_OBS' : number of observations per subject
+#     ##### 'label_names' : labels names (Nlabel)
+#     ##### OUTPUTS : confusion and proba matrix + the sklearn regression model
+#     ##########################################################################
     
-    fig_conf = plt.figure(figsize=(8,8))
-    ax = fig_conf.gca()
-    im = ax.imshow(conf_mean , clim=(0.0, 1.0))
-    fig_conf.colorbar(im, shrink=0.83, orientation='vertical')
-    ax.set_xticks(np.arange(NB_LABEL)); ax.set_xticklabels(label_names); ax.set_yticks(np.arange(NB_LABEL)); ax.set_yticklabels(label_names)
-    fig_conf.savefig(output_dir + '/conf_MLR_m.pdf', bbox_inches='tight')
+#     print("Performing LOOO Cross-validation LogReg...")
+#     NB_C = len(c_values)
+#     NB_LABEL = len(np.unique(labels)); NB_SUBJ = int( features.shape[0] / NB_OBS )
+#     conf = np.zeros((NB_OBS,NB_C,NB_LABEL,NB_LABEL));  # proba = np.zeros((NB_OBS,NB_SUBJ,NB_LABEL))
+#     # weights = np.zeros((NB_OBS,NB_LABEL,features.shape[1])); intercept = np.zeros((NB_OBS,NB_LABEL))
+#     cv_score = np.zeros((NB_OBS,NB_C))
+#     for j in range(0,NB_OBS) :
+#         print('LOOO fold ' + str(j+1))
+#         testFold = j
+#         # Determine indexes for LOOO
+#         indTest=[]; 
+#         for subj in range(NB_SUBJ) : indTest.append(subj*NB_OBS+j)
+#         indTrain = [e for i, e in enumerate(range(len(labels))) if  not (i in (indTest))]
+#         test_x = np.array([e for i, e in enumerate(features) if  i in (indTest)])
+#         test_y = [e for i, e in enumerate(labels) if  i in (indTest)]
+#         train_x = np.array([e for i, e in enumerate(features) if  i in (indTrain)])
+#         train_y = [e for i, e in enumerate(labels) if  i in (indTrain)]
+        
+#         for i in range(NB_C):
+#             mul_lr = linear_model.LogisticRegression(multi_class=multiclass, solver='newton-cg',C=c_values[i]).fit(train_x, train_y)
+        
+#             conf[j,i,:,:] = metrics.confusion_matrix(test_y, mul_lr.predict(test_x))
+#             conf[j,i,:,:] /= np.sum(conf[j,i,:,:],axis=1)[:,None]
+#             cv_score[j,i] = metrics.accuracy_score(test_y, mul_lr.predict(test_x))
+     
+#     # conf_mean = np.average(conf,0)
+#     # conf_sdv = np.std(conf,0)
     
-    return conf_mean, proba_mean, test_score, mul_lr
+#     return cv_score
+
 
 def class_SVM(features, labels, label_names, output_dir, kernel = 'linear') :
 
